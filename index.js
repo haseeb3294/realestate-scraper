@@ -1,6 +1,6 @@
-import express from "express";
-import cors from "cors";
-import { scrapePropertyData } from "./scraper.js";
+const express = require("express");
+const cors = require("cors");
+const { scrapePropertyData } = require("./scraper.js");
 
 const app = express();
 app.use(cors());
@@ -8,7 +8,7 @@ app.use(cors());
 const PORT = process.env.PORT || 5000;
 
 app.get("/", (req, res) => {
-  res.send("🏠 RealEstate Scraper API is running. Use /scrape?url=<page_url>");
+  res.send("Scraper API is running. Use /scrape?url=<page_url>");
 });
 
 app.get("/scrape", async (req, res) => {

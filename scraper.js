@@ -1,44 +1,71 @@
-import puppeteer from "puppeteer";
+const chromium = require("@sparticuz/chromium");
+const puppeteer = require("puppeteer-core");
 
-export async function scrapePropertyData(url) {
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  });
+async function scrapePropertyData(url) {
+  try {
+    const isLocal = !process.env.AWS_REGION;
 
-  const page = await browser.newPage();
-  await page.goto(url, { waitUntil: "networkidle2" });
+    const executablePath = isLocal
+      ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+      : await chromium.executablePath();
 
-  // Extract data from the page
-  const data = await page.evaluate(() => {
-    const getText = (selector) =>
-      document.querySelector(selector)?.innerText?.trim() || null;
+    const browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath,
+      headless: chromium.headless,
+    });
 
-    const title =
-      getText("h1") ||
-      getText(".property-info-address") ||
-      getText("meta[property='og:title']") ||
-      document.title;
+    const page = await browser.newPage();
+    await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
 
-    const description =
-      document.querySelector("meta[name='description']")?.content ||
-      getText(".property-description") ||
-      null;
+    // ✅ Extract details from the page
+    const data = await page.evaluate(() => {
+      const getText = (selector) =>
+        document.querySelector(selector)?.innerText?.trim() || null;
 
-    // Collect image URLs
-    const imageElements = document.querySelectorAll("img");
-    const images = Array.from(imageElements)
-      .map((img) => img.src)
-      .filter((src) => src && src.startsWith("http"));
+      const title =
+        getText("h1") ||
+        getText(".property-info-address") ||
+        document.title ||
+        "No title found";
 
-    // Collect additional property info
-    const price = getText(".property-price") || getText(".property-info-price");
-    const address =
-      getText(".property-address") || getText(".property-info-address") || null;
+      const description =
+        document.querySelector("meta[name='description']")?.content ||
+        getText(".property-description") ||
+        null;
 
-    return { title, description, price, address, images };
-  });
+      const images = Array.from(document.querySelectorAll("img"))
+        .map((img) => img.src)
+        .filter(
+          (src) =>
+            src &&
+            src.startsWith("http") &&
+            !src.includes("svg") &&
+            !src.includes("logo")
+        );
 
-  await browser.close();
-  return { url, ...data };
+      const price =
+        getText(".property-price") ||
+        getText(".property-info-price") ||
+        getText("[data-testid='listing-details__price']") ||
+        null;
+
+      const address =
+        getText(".property-address") ||
+        getText(".property-info-address") ||
+        getText("[data-testid='listing-details__address']") ||
+        null;
+
+      return { title, description, price, address, images };
+    });
+
+    await browser.close();
+    return { url, ...data };
+  } catch (error) {
+    console.error("Scraping failed:", error);
+    return { error: error.message };
+  }
 }
+
+module.exports = { scrapePropertyData };

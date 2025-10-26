@@ -9,10 +9,12 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "module",
+  "type": "commonjs",
   "dependencies": {
+    "@sparticuz/chromium": "^141.0.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "puppeteer": "^24.26.1"
+    "puppeteer": "^24.26.1",
+    "puppeteer-core": "^24.26.1"
   }
 }
